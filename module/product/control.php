@@ -459,6 +459,116 @@ class product extends control
     }
 
     /**
+     * Browse immutable requirement trace material in the authorized product only.
+     */
+    public function traceworkbench(int $productID, string $epicKey = '', int $revision = 0, int $projectionRevision = 0, string $kind = 'directory', int $entry = 0)
+    {
+        if(empty($this->config->specTraceWorkbench) || $this->viewType !== 'html' || ($_GET['zin'] ?? '') === '0')
+        {
+            http_response_code(404);
+            return;
+        }
+
+        $this->app->useClientCache = false;
+        header('Cache-Control: private, no-store');
+        $account = $this->app->user->account ?? '';
+        $user = $this->dao->select('id')->from(TABLE_USER)->where('account')->eq($account)->andWhere('deleted')->eq('0')->fetch();
+        if(!$this->user->isLogon() || !$user || commonModel::isTutorialMode())
+        {
+            http_response_code(403);
+            return;
+        }
+
+        /* Use current ZenTao group grants and product visibility at the content read. */
+        $this->app->user->admin = str_contains((string)$this->app->company->admins, ",$account,");
+        $rights = $this->user->authorize($account);
+        $this->app->user->rights = $rights;
+        $this->app->user->view = $this->user->grantUserView($account, $rights['acls'] ?? array(), $rights['projects'] ?? '');
+        $product = $this->dao->select('id,name')->from(TABLE_PRODUCT)->where('id')->eq($productID)->andWhere('deleted')->eq('0')->fetch();
+        if(!$product || !$this->product->checkPriv($productID) || !commonModel::getUserPriv('product', 'traceworkbench'))
+        {
+            http_response_code(403);
+            echo htmlspecialchars($this->lang->product->accessDenied, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            return;
+        }
+
+        require_once __DIR__ . '/traceworkbench.php';
+        $this->product->setMenu($productID);
+        $this->view->title = $product->name . $this->lang->hyphen . $this->lang->product->traceworkbench;
+        $this->view->productID = $productID;
+        $this->view->traceProductName = $product->name;
+        $this->view->kind = $kind;
+        $this->view->entry = $entry;
+        $this->view->traceState = 'ready';
+
+        try
+        {
+            $reader   = new productTraceWorkbench($this->dbh);
+            $versions = $reader->versions($productID);
+            $this->view->versions = $versions;
+            if(!$versions)
+            {
+                $this->view->traceState = 'empty';
+                return $this->display();
+            }
+
+            $epicKey = $epicKey === '' ? (string)array_key_first($versions) : $epicKey;
+            $revisions = $versions[$epicKey] ?? array();
+            $revision = $revision === 0 ? (int)array_key_first($revisions) : $revision;
+            $choices = $revisions[$revision] ?? null;
+            $projectionRevision = $projectionRevision === 0 ? (int)($choices[0] ?? 0) : $projectionRevision;
+
+            $this->view->epicKey = $epicKey;
+            $this->view->revision = $revision;
+            $this->view->projectionRevision = $projectionRevision;
+            if($choices === null || ($projectionRevision !== 0 && !in_array($projectionRevision, $choices, true)))
+            {
+                http_response_code(404);
+                $this->view->traceState = 'unknown';
+                return $this->display();
+            }
+            if(!$choices)
+            {
+                $this->view->traceState = 'unpublished';
+                return $this->display();
+            }
+
+            $epic = hex2bin($epicKey);
+            $projection = $reader->projection($productID, $epic, $revision, $projectionRevision);
+            if(!$projection) throw new RuntimeException('Published trace projection unavailable');
+
+            $payload = $projection['payload'];
+            $navigation = new productTraceNavigation($payload);
+            $listKinds = array('directory', 'features', 'specs');
+            $selected = isset(productTraceNavigation::TYPES[$kind]) ? $navigation->entry($kind, $entry) : null;
+            if(!$selected && (!in_array($kind, $listKinds, true) || $entry !== 0))
+            {
+                http_response_code(404);
+                $this->view->traceState = 'unknown';
+                return $this->display();
+            }
+
+            $spec = match($kind)
+            {
+                'spec' => $selected,
+                'target' => $navigation->entry('spec', $selected['specIndex'] + 1),
+                default => null
+            };
+            $this->view->projection = $projection;
+            $this->view->navigation = $navigation;
+            $this->view->selected = $selected;
+            $this->view->epicHistory = $kind === 'directory' ? $reader->decisions($productID, $epic, $revision, 'epic', $epic, $payload['baseline']) : array();
+            $this->view->specHistory = $spec ? $reader->decisions($productID, $epic, $revision, 'spec', $spec['feature_id'], $spec['target_revision'] ?? '') : array();
+        }
+        catch(JsonException | RuntimeException $error)
+        {
+            http_response_code(503);
+            $this->view->traceState = 'unavailable';
+        }
+        $this->display();
+    }
+
+    /**
      * 删除产品。
      * Delete a product.
      *

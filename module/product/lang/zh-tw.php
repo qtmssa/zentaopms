@@ -215,3 +215,5 @@ $lang->product->moreSelects['activestory']   = $lang->product->activeStory;
 $lang->product->moreSelects['changingstory'] = $lang->product->changingStory;
 $lang->product->moreSelects['willclose']     = $lang->product->willClose;
 $lang->product->moreSelects['closedstory']   = $lang->product->closedStory;
+
+$lang->product->traceworkbench = '需求追溯';

@@ -304,3 +304,5 @@ $lang->product->completeRate      = '完成率';
 $lang->product->editLine          = '编辑产品线';
 $lang->product->latestReleaseDate = '最新发布时间';
 $lang->product->latestRelease     = '最新发布';
+
+$lang->product->traceworkbench = '需求追溯';

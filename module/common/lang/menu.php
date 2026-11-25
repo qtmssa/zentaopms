@@ -196,6 +196,17 @@ $lang->product->menu->epic        = array('link' => "{$lang->ERCommon}|product|b
 $lang->product->menu->requirement = array('link' => "{$lang->URCommon}|product|browse|productID=%s&branch=&browseType=unclosed&param=0&storyType=requirement", 'alias' => 'batchedit', 'subModule' => 'story', 'icon' => 'icon-requirement');
 $lang->product->menu->story       = array('link' => "{$lang->SRCommon}|product|browse|productID=%s", 'alias' => 'batchedit', 'subModule' => 'story', 'exclude' => (isset($_GET['storyType']) ? ($_GET['storyType'] == 'requirement' ? 'browse,story-report,story-create,story-batchcreate' : '') : '') . ',batchtotask', 'icon' => 'icon-story' );
 $lang->product->menu->plan        = array('link' => "{$lang->productplan->shortCommon}|productplan|browse|productID=%s", 'subModule' => 'productplan,bug', 'icon' => 'icon-productplan');
+if(!empty($config->specTraceWorkbench))
+{
+    $traceWorkbenchLabel = match(isset($this) ? $this->getClientLang() : null)
+    {
+        'zh-cn', 'zh-tw' => '需求追溯',
+        'de' => 'Anforderungsverfolgung',
+        'fr' => 'Traçabilité des exigences',
+        default => 'Requirement Trace'
+    };
+    $lang->product->menu->traceworkbench = array('link' => "$traceWorkbenchLabel|product|traceworkbench|productID=%s", 'icon' => 'icon-file-text');
+}
 $lang->product->menu->project     = array('link' => "{$lang->projectCommon}|product|project|status=all&productID=%s", 'icon' => 'icon-project');
 $lang->product->menu->release     = array('link' => "{$lang->release->common}|release|browse|productID=%s", 'subModule' => 'release,system', 'icon' => 'icon-tag');
 $lang->product->menu->roadmap     = array('link' => "{$lang->roadmap}|product|roadmap|productID=%s", 'icon' => 'icon-roadmap');
@@ -211,6 +222,7 @@ $lang->product->menuOrder[15] = 'requirement';
 $lang->product->menuOrder[20] = 'story';
 $lang->product->menuOrder[25] = 'plan';
 $lang->product->menuOrder[30] = 'track';
+if(!empty($config->specTraceWorkbench)) $lang->product->menuOrder[32] = 'traceworkbench';
 $lang->product->menuOrder[35] = 'project';
 $lang->product->menuOrder[40] = 'release';
 $lang->product->menuOrder[45] = 'roadmap';

@@ -304,3 +304,5 @@ $lang->product->completeRate      = 'Completion Rate';
 $lang->product->editLine          = 'Edit Product Line';
 $lang->product->latestReleaseDate = 'Latest Release on';
 $lang->product->latestRelease     = 'Latest Release';
+
+$lang->product->traceworkbench = 'Requirement Trace';

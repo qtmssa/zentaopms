@@ -12,6 +12,7 @@ require __DIR__ . '/candidates.php';
 try {
     $action = $argv[1] ?? '';
     $roles = ['install'=>['installer'],'import'=>['author'],'submit'=>['author'],'snapshot'=>['author','reviewer','reader'],'decision'=>['reviewer']];
+    $roles['structure'] = ['author'];
     demand(count($argv) === 2 && isset($roles[$action]), 'expected install, import, snapshot, submit or decision');
     demand(in_array(envRequired('TRACE_ROLE'), $roles[$action], true), 'action not granted');
     $db = new PDO(envRequired('TRACE_DSN'), envRequired('TRACE_DB_USER'), getenv('TRACE_DB_PASSWORD') ?: '', [
@@ -47,8 +48,8 @@ try {
             $freeze = fullRow($db, $product, $epic, $r->revision ?? null);
             if ($action === 'submit') {
                 $answer = submitCandidate($db, $r, $freeze, $actor);
-            } elseif ($action === 'decision') {
-                $answer = appendDecision($db, $r, $freeze, $actor);
+            } elseif ($action === 'decision' || $action === 'structure') {
+                $answer = appendDecision($db, $r, $freeze, $actor, $action === 'structure');
             } else {
                 $answer = receipt($freeze) + ['active_revision'=>activeRevision($db,$freeze),'author'=>$freeze['author'],'graph'=>json_decode($freeze['graph'], false, 512, JSON_THROW_ON_ERROR),
                                               'statistics'=>statistics($db,(int)$freeze['id']),'decisions'=>decisionHistory($db,$freeze)];

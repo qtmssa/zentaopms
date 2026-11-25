@@ -1605,6 +1605,9 @@ eof;
         if(strpos($method, 'create') === 0) return false;
         if(strpos($method, 'import') === 0) return false;
 
+        /* The trace workbench separately checks the product's current view ACL. */
+        if($module === 'product' && $method === 'traceworkbench') return true;
+
         if(empty($object)) return true;
 
         $account = $app->user->account;

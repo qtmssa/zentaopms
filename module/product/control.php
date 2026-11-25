@@ -463,7 +463,8 @@ class product extends control
      */
     public function traceworkbench(int $productID, string $epicKey = '', int $revision = 0, int $projectionRevision = 0, string $kind = 'directory', int $entry = 0)
     {
-        if(empty($this->config->specTraceWorkbench) || $this->viewType !== 'html' || ($_GET['zin'] ?? '') === '0')
+        require_once dirname(__DIR__, 2) . '/tools/spec-trace/install.php';
+        if(!SpecTraceInstall::enabled($this->config) || $this->viewType !== 'html' || ($_GET['zin'] ?? '') === '0')
         {
             http_response_code(404);
             return;
@@ -485,10 +486,7 @@ class product extends control
         $this->app->user->rights = $rights;
         $this->app->user->view = $this->user->grantUserView($account, $rights['acls'] ?? array(), $rights['projects'] ?? '');
         $product = $this->dao->select('id,name')->from(TABLE_PRODUCT)->where('id')->eq($productID)->andWhere('deleted')->eq('0')->fetch();
-        $managedProducts = explode(',', $rights['products'] ?? '');
-        $hasMethodGrant = $this->app->user->admin || !empty($rights['rights']['product']['traceworkbench']);
-        $isProductManager = in_array((string)$productID, $managedProducts, true) || in_array('all', $managedProducts, true);
-        if(!$product || !$this->product->checkPriv($productID) || (!$hasMethodGrant && !$isProductManager) || !commonModel::getUserPriv('product', 'traceworkbench'))
+        if(!$product || !$this->product->checkPriv($productID) || !commonModel::getUserPriv('product', 'traceworkbench', $product))
         {
             http_response_code(403);
             echo htmlspecialchars($this->lang->product->accessDenied, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

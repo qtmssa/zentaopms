@@ -855,3 +855,5 @@ $lang->changelog['22.3'][] = 'story-batchSubmitReview';
 $lang->changelog['22.3'][] = 'requirement-batchSubmitReview';
 $lang->changelog['22.3'][] = 'epic-batchSubmitReview';
 $lang->changelog['22.3'][] = 'projectstory-batchSubmitReview';
+
+$lang->changelog['22.7'][] = 'product-traceworkbench';

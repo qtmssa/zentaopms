@@ -28,6 +28,7 @@ $config->sessionLife   = 86400;                // Session超时时间，单位�
 $config->edition       = 'open';               // 设置系统的edition，可选值：open|biz|max。Set edition, optional: open|biz|max.
 $config->tabSession    = false;                // 是否开启浏览器新标签独立session.
 $config->clientCache   = false;                // 是否开启客户端缓存。Whether enable client cache or not.
+$config->specTraceWorkbench = true;            // 可在 config/my.php 中禁用需求追溯。Can be disabled in config/my.php.
 
 /* 框架路由相关设置。Routing settings. */
 $config->requestType = 'PATH_INFO';               // 请求类型：PATH_INFO|PATHINFO2|GET。    The request type: PATH_INFO|PATH_INFO2|GET.

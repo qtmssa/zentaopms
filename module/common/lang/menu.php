@@ -196,7 +196,8 @@ $lang->product->menu->epic        = array('link' => "{$lang->ERCommon}|product|b
 $lang->product->menu->requirement = array('link' => "{$lang->URCommon}|product|browse|productID=%s&branch=&browseType=unclosed&param=0&storyType=requirement", 'alias' => 'batchedit', 'subModule' => 'story', 'icon' => 'icon-requirement');
 $lang->product->menu->story       = array('link' => "{$lang->SRCommon}|product|browse|productID=%s", 'alias' => 'batchedit', 'subModule' => 'story', 'exclude' => (isset($_GET['storyType']) ? ($_GET['storyType'] == 'requirement' ? 'browse,story-report,story-create,story-batchcreate' : '') : '') . ',batchtotask', 'icon' => 'icon-story' );
 $lang->product->menu->plan        = array('link' => "{$lang->productplan->shortCommon}|productplan|browse|productID=%s", 'subModule' => 'productplan,bug', 'icon' => 'icon-productplan');
-if(!empty($config->specTraceWorkbench))
+require_once dirname(__DIR__, 3) . '/tools/spec-trace/install.php';
+if(SpecTraceInstall::enabled($config))
 {
     $traceWorkbenchLabel = match(isset($this) ? $this->getClientLang() : null)
     {
@@ -222,7 +223,7 @@ $lang->product->menuOrder[15] = 'requirement';
 $lang->product->menuOrder[20] = 'story';
 $lang->product->menuOrder[25] = 'plan';
 $lang->product->menuOrder[30] = 'track';
-if(!empty($config->specTraceWorkbench)) $lang->product->menuOrder[32] = 'traceworkbench';
+if(isset($lang->product->menu->traceworkbench)) $lang->product->menuOrder[32] = 'traceworkbench';
 $lang->product->menuOrder[35] = 'project';
 $lang->product->menuOrder[40] = 'release';
 $lang->product->menuOrder[45] = 'roadmap';

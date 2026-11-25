@@ -9,6 +9,7 @@ require __DIR__ . '/graph.php';
 require __DIR__ . '/decisions.php';
 require __DIR__ . '/candidates.php';
 require __DIR__ . '/projection.php';
+require __DIR__ . '/install.php';
 
 try {
     $action = $argv[1] ?? '';
@@ -27,7 +28,7 @@ try {
     $db->exec("SET time_zone='+00:00'");
     if ($action === 'install') {
         demand($db->query("SHOW TABLES LIKE 'zt_product'")->fetchColumn() === 'zt_product', 'need a ZenTao database with zt_ prefix');
-        $db->exec(file_get_contents(__DIR__ . '/schema.sql'));
+        SpecTraceInstall::run($db);
         $answer = ['installed'=>true];
     } else {
         $r = json_decode(stream_get_contents(STDIN), false, 512, JSON_THROW_ON_ERROR);

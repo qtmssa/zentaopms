@@ -347,6 +347,9 @@ class install extends control
 
             if(!isset($this->config->installed) || !$this->config->installed) return $this->send(array('result' => 'fail', 'callback' => "zui.Modal.alert('{$this->lang->install->errorNotSaveConfig}').then((res) => {loadPage('" . $this->createLink('install', 'step3') . "')});"));
 
+            require_once dirname(__DIR__, 2) . '/tools/spec-trace/install.php';
+            if(SpecTraceInstall::enabled($this->config)) SpecTraceInstall::run($this->dbh);
+
             $this->loadModel('common');
 
             $data = form::data()->get();

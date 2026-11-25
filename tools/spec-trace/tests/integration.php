@@ -36,8 +36,20 @@ $installer = ['TRACE_ROLE'=>'installer'];
 $writer = ['TRACE_ROLE'=>'author'];
 $reader = ['TRACE_ROLE'=>'reader'];
 $reviewer = ['TRACE_ROLE'=>'reviewer','TRACE_ACTOR'=>'projectManager'];
-runCli('install',[],$installer);
-runCli('install',[],$installer);
+$firstInstall = launch('install', [], $installer);
+$secondInstall = launch('install', [], $installer);
+foreach ([$firstInstall, $secondInstall] as $child) {
+    [$exit, $result] = finish($child);
+    demand($exit === 0 && $result === ['installed'=>true], 'concurrent trace installation failed');
+}
+$db = new PDO($env['TRACE_DSN'], $env['TRACE_DB_USER'], $env['TRACE_DB_PASSWORD'], [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$adminGroup = (int)$db->query("SELECT id FROM zt_group WHERE vision='rnd' AND role='admin' AND project=0 AND devopsSpace=0")->fetchColumn();
+$grants = "SELECT `group` FROM zt_grouppriv WHERE module='product' AND method='traceworkbench'";
+demand($adminGroup > 0 && $db->query($grants)->fetchAll(PDO::FETCH_COLUMN) === [$adminGroup], 'wrong default trace grants');
+$db->exec("DELETE FROM zt_grouppriv WHERE module='product' AND method='traceworkbench'");
+runCli('install', [], $installer);
+demand($db->query($grants)->fetchAll() === [], 'repeat installation restored a withdrawn grant');
+mark('concurrent schema install, native admin group only, and retained permission withdrawal');
 $base = ['product'=>1,'epic'=>'fixture'];
 $commit = str_repeat('c',40); $blob = str_repeat('a',40);
 $source = ['id'=>'S1','revision'=>'v1','path'=>'docs/source.md','blob'=>$blob];

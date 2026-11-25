@@ -1725,11 +1725,16 @@ class userModel extends model
      * @access private
      * @return array
      */
-    private function initViewObjects(string $account): array
+    private function initViewObjects(string $account, bool $refresh = false): array
     {
         $this->loadModel('project');
 
         static $allProducts, $allProjects, $allPrograms, $allSprints, $teams, $whiteList, $stakeholders;
+        if($refresh)
+        {
+            $allProducts = $allProjects = $allPrograms = $allSprints = null;
+            $teams = $whiteList = $stakeholders = array();
+        }
 
         if(!$allProducts) $allProducts = $this->loadModel('product')->getListByAcl('private');
         if(!$allProjects) $allProjects = $this->project->getListByAclAndType('private,program', 'project');
@@ -1969,10 +1974,11 @@ class userModel extends model
      *
      * @param  string $account
      * @param  bool   $force    是否重新生成
+     * @param  bool   $persist  Whether to read and write the persisted view.
      * @access public
      * @return object
      */
-    public function computeUserView(string $account = '', bool $force = false): object
+    public function computeUserView(string $account = '', bool $force = false, bool $persist = true): object
     {
         if(empty($account))
         {
@@ -1985,7 +1991,8 @@ class userModel extends model
             }
         }
 
-        $oldUserView = $this->dao->select('*')->from(TABLE_USERVIEW)->where('account')->eq($account)->fetch();
+        $oldUserView = $persist ? $this->dao->select('*')->from(TABLE_USERVIEW)->where('account')->eq($account)->fetch() : false;
+        if(!$persist) $force = true;
         if(!$force)
         {
             $userviewUpdateTime      = $this->config->userview->updateTime ?? ($this->loadModel('setting')->getItem("owner=$account&module=common&section=userview&key=updateTime") ?: 0); // 当前用户访问权限的更新时间。
@@ -2002,7 +2009,7 @@ class userModel extends model
         }
 
         /* Init objects. */
-        list($allProducts, $allProjects, $allPrograms, $allSprints, $teams, $whiteList, $stakeholders) = $this->initViewObjects($account);
+        list($allProducts, $allProjects, $allPrograms, $allSprints, $teams, $whiteList, $stakeholders) = $this->initViewObjects($account, !$persist);
 
         /* Init user view. */
         $userView = new stdclass();
@@ -2033,6 +2040,8 @@ class userModel extends model
             $userView->projects = $this->getProjectView($account, $allProjects, $manageObjects, $teams, $stakeholders, $whiteList, $projectStakeholderGroup);
             $userView->sprints  = $this->getSprintView($account, $allSprints, $manageObjects, $teams, $stakeholders, $whiteList, $executionStakeholderGroup);
         }
+
+        if(!$persist) return $userView;
 
         /* 更新访问权限表。 */
         $this->dao->begin();
@@ -2165,17 +2174,18 @@ class userModel extends model
      * @param  string $account
      * @param  array  $acls
      * @param  string $projects 此人管理的项目列表
+     * @param  bool   $refresh  Read current object permissions without persisting the result.
      * @access public
      * @return object
      */
-    public function grantUserView(string $account = '', array $acls = array(), string $projects = ''): object
+    public function grantUserView(string $account = '', array $acls = array(), string $projects = '', bool $refresh = false): object
     {
         if(empty($account)) $account = $this->session->user->account;
         if(empty($account)) return new stdclass();
-        if(empty($acls)     && !empty($this->session->user->rights['acls']))     $acls     = $this->session->user->rights['acls'];
-        if(empty($projects) && !empty($this->session->user->rights['projects'])) $projects = $this->session->user->rights['projects'];
+        if(!$refresh && empty($acls)     && !empty($this->session->user->rights['acls']))     $acls     = $this->session->user->rights['acls'];
+        if(!$refresh && empty($projects) && !empty($this->session->user->rights['projects'])) $projects = $this->session->user->rights['projects'];
 
-        $userView = $this->computeUserView($account);
+        $userView = $this->computeUserView($account, $refresh, !$refresh);
 
         /* Get opened projects, programs, products and set it to userview. */
         $openedProducts = array_keys($this->loadModel('product')->getListByAcl('open'));
@@ -2187,7 +2197,8 @@ class userModel extends model
         $userView->projects = rtrim($userView->projects, ',') . ',' . implode(',', $openedProjects);
 
         /* 合并用户视图权限到用户访问权限。 */
-        $userView = $this->mergeAclsToUserView($account, $userView, $acls, $projects);
+        $isAdmin = $refresh ? str_contains((string)$this->app->company->admins, ",$account,") : null;
+        $userView = $this->mergeAclsToUserView($account, $userView, $acls, $projects, $isAdmin);
 
         $userView->products = trim($userView->products, ',');
         $userView->programs = trim($userView->programs, ',');
@@ -2204,14 +2215,14 @@ class userModel extends model
      * @param  string  $account
      * @param  object  $userView
      * @param  array   $acls
-     * @param  string  $projects
+     * @param  string    $projects
+     * @param  bool|null $isAdmin
      * @access private
      * @return object
      */
-    private function mergeAclsToUserView(string $account, object $userView, array $acls, string $projects): object
+    private function mergeAclsToUserView(string $account, object $userView, array $acls, string $projects, ?bool $isAdmin = null): object
     {
-        if(isset($_SESSION['user']->admin)) $isAdmin = $this->session->user->admin;
-        if(!isset($isAdmin))                $isAdmin = strpos($this->app->company->admins, ",{$account},") !== false;
+        $isAdmin ??= $this->session->user->admin ?? str_contains((string)$this->app->company->admins, ",$account,");
 
         /* 权限分组-视野维护的优先级最高，所以这里进行了替换操作。*/
         /* View management has the highest priority, so there is a substitution. */

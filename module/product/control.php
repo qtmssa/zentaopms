@@ -480,13 +480,22 @@ class product extends control
             return;
         }
 
-        /* Use current ZenTao group grants and product visibility at the content read. */
-        $this->app->user->admin = str_contains((string)$this->app->company->admins, ",$account,");
+        /* Authorize the content read without using the saved company or user view. */
+        $company = $this->loadModel('company')->getFirst();
+        if(!$company)
+        {
+            http_response_code(403);
+            return;
+        }
+        $this->app->company = $company;
+        $this->app->user = clone $this->app->user;
+        $this->app->user->admin = str_contains((string)$company->admins, ",$account,");
         $rights = $this->user->authorize($account);
         $this->app->user->rights = $rights;
-        $this->app->user->view = $this->user->grantUserView($account, $rights['acls'] ?? array(), $rights['projects'] ?? '');
         $product = $this->dao->select('id,name')->from(TABLE_PRODUCT)->where('id')->eq($productID)->andWhere('deleted')->eq('0')->fetch();
-        if(!$product || !$this->product->checkPriv($productID) || !commonModel::getUserPriv('product', 'traceworkbench', $product))
+        $canRead = $product && commonModel::getUserPriv('product', 'traceworkbench', $product);
+        if($canRead) $this->app->user->view = $this->user->grantUserView($account, $rights['acls'] ?? array(), $rights['projects'] ?? '', true);
+        if(!$canRead || !$this->product->checkPriv($productID))
         {
             http_response_code(403);
             echo htmlspecialchars($this->lang->product->accessDenied, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

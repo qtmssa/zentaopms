@@ -83,3 +83,14 @@ CREATE TABLE IF NOT EXISTS zt_spectrace_candidate (
   FOREIGN KEY (freeze_id) REFERENCES zt_spectrace_freeze(id),
   FOREIGN KEY (epic_decision) REFERENCES zt_spectrace_decision(id)
 ) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS zt_spectrace_projection (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  freeze_id BIGINT UNSIGNED NOT NULL,
+  projection_revision INT UNSIGNED NOT NULL,
+  digest CHAR(64) CHARACTER SET ascii NOT NULL,
+  payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  publisher VARBINARY(128) NOT NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id), UNIQUE KEY by_freeze_revision (freeze_id,projection_revision),
+  FOREIGN KEY (freeze_id) REFERENCES zt_spectrace_freeze(id)
+) ENGINE=InnoDB;

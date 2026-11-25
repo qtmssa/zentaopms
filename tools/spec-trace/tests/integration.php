@@ -123,3 +123,5 @@ $redo = array_merge($first,['prior_decision'=>$d3['id']]);
 runCli('decision',$redo,$withReport,'superseded freeze');
 mark('concurrent CAS, immutable versions, rollback, stale source and missing consumer');
 unlink($reportFile);
+
+require __DIR__ . '/projection_cases.php';

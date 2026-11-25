@@ -27,3 +27,12 @@
 ## 复跑数据库验证
 
 在具备 Docker 的主机运行 `bash tools/spec-trace/tests/run.sh`。脚本新建无网络的官方 22.7 容器，初始化官方样例数据库，经过真实 CLI 测试并移除该容器。测试内模拟的审阅和机械报告只验证入库门槛。
+
+## 工作台只读投影
+
+由受控出版进程从冻结 Git 基线和准确规格候选生成投影，使用单独的 `TRACE_ROLE=publisher`。出版进程须验证来源树、规格提交中的路径与 blob、资料范围及定位。该角色需要读取相关原生表和冻结表、锁定所属 Epic 的 stream 行，并对投影表拥有 SELECT、INSERT。读取服务只需 SELECT。投影和 Git 中的正式正文分别用于查询与版本恢复。CLI 再次核对缓存文本的 Git blob 摘要、引用、字符分区和冻结身份。独审与必要人类审批继续走其已有入口。
+
+- `publish` 输入为 `product,epic,revision,basis,expected_projection,projection`。初次出版传 0。相同基线、内容及出版账号的重试返回原回执；竞争更新先对账新版本再合并。修改历史冻结上的投影会被拒绝。一次出版为完整视图，单功能更新需保留同版其它功能数据。
+- `projection` 读最新出版，或用 `revision,projection_revision` 读准确历史。未出版的冻结返回 `projection_revision:0,projection:null`。请求不存在的明确出版序号会失败。`projections` 列该冻结的出版回执，按新到旧排序。查询角色支持 reader、author、reviewer、publisher。
+- 投影版本 1 包含 `baseline,directories,documents,fragments,features,obligations,fragment_obligations,specs,target_obligations`。`directories` 以规范路径为 ID 并指向父目录。可读文档和规格保存 UTF-8 原始文本（保留 BOM 和换行），Git blob 身份针对完整字节计算。文档分区按 **1 基 Unicode 码点、闭区间** 覆盖全部正文。未切、未关联、已处置和有关联区间分别用 `uncut,unlinked,disposed,linked` 表示。无法提取或读取的文件保留版本和状态，正文为空值。每个片段可关联多个功能义务。义务由 `item_id,item_revision,obligation_id,feature_id` 共同识别。条款和场景以 `feature_id,blob,kind,id` 识别。各关联数组支持按任一方向检索，完整投影可在独审前发布以展示缺口。
+- `zt_spectrace_projection.freeze_id` 外键关联现有冻结图。读取时以禅道已授权的 `zt_spectrace_freeze.product`、Epic、冻结修订和出版修订定位；Web 读取受会话产品权限约束。多版本按 `(freeze_id,projection_revision)` 唯一。相同内容不重复追加到当前头。回执中的 `projection_digest` 是经过递归键排序的 UTF-8 JSON SHA-256。决定及其有效性从冻结关系库实时取得。

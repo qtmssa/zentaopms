@@ -8,12 +8,17 @@ require __DIR__ . '/common.php';
 require __DIR__ . '/graph.php';
 require __DIR__ . '/decisions.php';
 require __DIR__ . '/candidates.php';
+require __DIR__ . '/projection.php';
 
 try {
     $action = $argv[1] ?? '';
     $roles = ['install'=>['installer'],'import'=>['author'],'submit'=>['author'],'snapshot'=>['author','reviewer','reader'],'decision'=>['reviewer']];
+    $readers = ['reader','author','reviewer','publisher'];
+    $roles += ['publish'=>['publisher'], 'projection'=>$readers, 'projections'=>$readers];
+    $roles['snapshot'][] = 'publisher';
     $roles['structure'] = ['author'];
-    demand(count($argv) === 2 && isset($roles[$action]), 'expected install, import, snapshot, submit or decision');
+    $readOnly = in_array($action, ['snapshot','projection','projections'], true);
+    demand(count($argv) === 2 && isset($roles[$action]), 'unknown CLI action');
     demand(in_array(envRequired('TRACE_ROLE'), $roles[$action], true), 'action not granted');
     $db = new PDO(envRequired('TRACE_DSN'), envRequired('TRACE_DB_USER'), getenv('TRACE_DB_PASSWORD') ?: '', [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false,
@@ -31,12 +36,12 @@ try {
         demand((string)$product === envRequired('TRACE_PRODUCT'), 'product not granted');
         $epic = label($r->epic ?? null, 'epic', 128);
         $actor = label(envRequired('TRACE_ACTOR'), 'actor', 128);
-        if ($action !== 'snapshot') $db->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        if (!$readOnly) $db->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
         else $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         $db->beginTransaction();
         demand((bool)query($db, "SELECT 1 FROM zt_product WHERE id=? AND deleted='0'", [$product])->fetchColumn(), 'missing or deleted product');
         demand((bool)query($db, "SELECT 1 FROM zt_user WHERE BINARY account=? AND deleted='0'", [$actor])->fetchColumn(), 'missing or deleted actor');
-        if ($action !== 'snapshot') {
+        if (!$readOnly) {
             // Serialize each Epic independently, including the initial import.
             query($db, 'INSERT INTO zt_spectrace_stream(product,epic) VALUES(?,?) ON DUPLICATE KEY UPDATE product=VALUES(product)', [$product,$epic]);
             query($db, 'SELECT product FROM zt_spectrace_stream WHERE product=? AND epic=? FOR UPDATE', [$product,$epic])->fetch();
@@ -44,9 +49,13 @@ try {
         if ($action === 'import') {
             $answer = storeGraph($db, $r, $product, $epic, $actor);
         } else {
-            if ($action !== 'snapshot') positive($r->revision ?? null, 'revision');
+            if (!$readOnly) positive($r->revision ?? null, 'revision');
             $freeze = fullRow($db, $product, $epic, $r->revision ?? null);
-            if ($action === 'submit') {
+            if ($action === 'publish') {
+                $answer = publishProjection($db, $r, $freeze, $actor);
+            } elseif ($action === 'projection' || $action === 'projections') {
+                $answer = readProjection($db, $r, $freeze, $action === 'projections');
+            } elseif ($action === 'submit') {
                 $answer = submitCandidate($db, $r, $freeze, $actor);
             } elseif ($action === 'decision' || $action === 'structure') {
                 $answer = appendDecision($db, $r, $freeze, $actor, $action === 'structure');

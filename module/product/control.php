@@ -485,7 +485,10 @@ class product extends control
         $this->app->user->rights = $rights;
         $this->app->user->view = $this->user->grantUserView($account, $rights['acls'] ?? array(), $rights['projects'] ?? '');
         $product = $this->dao->select('id,name')->from(TABLE_PRODUCT)->where('id')->eq($productID)->andWhere('deleted')->eq('0')->fetch();
-        if(!$product || !$this->product->checkPriv($productID) || !commonModel::getUserPriv('product', 'traceworkbench'))
+        $managedProducts = explode(',', $rights['products'] ?? '');
+        $hasMethodGrant = $this->app->user->admin || !empty($rights['rights']['product']['traceworkbench']);
+        $isProductManager = in_array((string)$productID, $managedProducts, true) || in_array('all', $managedProducts, true);
+        if(!$product || !$this->product->checkPriv($productID) || (!$hasMethodGrant && !$isProductManager) || !commonModel::getUserPriv('product', 'traceworkbench'))
         {
             http_response_code(403);
             echo htmlspecialchars($this->lang->product->accessDenied, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

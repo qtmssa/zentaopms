@@ -116,6 +116,9 @@ demand($as+$bs===1 && ($as===0 ? $br['error'] : $ar['error']) === 'revision conf
 $now = runCli('snapshot',$base,$reader);
 demand($now['revision'] === 2 && $now['statistics']['unmatched_source_versions']===1 && $now['statistics']['unknown_consumers']===1 && !$now['decisions'], 'frozen gaps and new revision pending');
 demand(runCli('snapshot',$base+['revision'=>1],$reader)['graph']==$graph && runCli('import',$import,$writer)==$receipt, 'old freeze and retry preserved');
+$old = runCli('snapshot',$base+['revision'=>1],$reader);
+demand($old['active_revision'] === 2 && array_column($old['decisions'],'current') === [false,false,false], 'historical decisions are inactive');
+demand(!runCli('decision',$revoke,$reviewer)['current'], 'old decision retry never reports current');
 $redo = array_merge($first,['prior_decision'=>$d3['id']]);
 runCli('decision',$redo,$withReport,'superseded freeze');
 mark('concurrent CAS, immutable versions, rollback, stale source and missing consumer');

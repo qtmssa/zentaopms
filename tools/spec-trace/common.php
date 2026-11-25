@@ -110,3 +110,9 @@ function receipt(array $row): array
 {
     return ['product' => (int)$row['product'], 'epic' => $row['epic'], 'revision' => (int)$row['revision'], 'basis' => $row['basis']];
 }
+
+
+function activeRevision(PDO $db, array $freeze): int
+{
+    return (int)query($db, 'SELECT MAX(revision) FROM zt_spectrace_freeze WHERE product=? AND epic=?', [$freeze['product'],$freeze['epic']])->fetchColumn();
+}

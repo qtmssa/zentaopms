@@ -50,7 +50,7 @@ try {
             } elseif ($action === 'decision') {
                 $answer = appendDecision($db, $r, $freeze, $actor);
             } else {
-                $answer = receipt($freeze) + ['author'=>$freeze['author'],'graph'=>json_decode($freeze['graph'], false, 512, JSON_THROW_ON_ERROR),
+                $answer = receipt($freeze) + ['active_revision'=>activeRevision($db,$freeze),'author'=>$freeze['author'],'graph'=>json_decode($freeze['graph'], false, 512, JSON_THROW_ON_ERROR),
                                               'statistics'=>statistics($db,(int)$freeze['id']),'decisions'=>decisionHistory($db,$freeze)];
             }
         }

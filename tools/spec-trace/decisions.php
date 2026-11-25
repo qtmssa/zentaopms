@@ -4,6 +4,7 @@ declare(strict_types=1);
 function decisionHistory(PDO $db, array $freeze): array
 {
     $rows = query($db, 'SELECT id,stage,scope,decision,target_revision,reviewer,evidence,mechanical_report,prior_decision,epic_decision,created_at FROM zt_spectrace_decision WHERE freeze_id=? ORDER BY id', [$freeze['id']])->fetchAll();
+    $active = activeRevision($db, $freeze) === (int)$freeze['revision'];
     $heads = [];
     $epicHead = null;
     foreach ($rows as &$row) {
@@ -19,7 +20,7 @@ function decisionHistory(PDO $db, array $freeze): array
     }
     unset($row);
     foreach ($rows as &$row) {
-        $row['current'] = $row['id'] === $heads[$row['stage']][$row['scope']] && ($row['stage'] === 'epic' || $row['epic_decision'] === $epicHead);
+        $row['current'] = $active && $row['id'] === $heads[$row['stage']][$row['scope']] && ($row['stage'] === 'epic' || $row['epic_decision'] === $epicHead);
     }
     unset($row);
     return $rows;
@@ -83,7 +84,7 @@ function appendDecision(PDO $db, object $r, array $freeze, string $actor): array
     }
     demand($last === $prior, 'prior decision conflict');
     demand($r->stage !== 'spec' || $upstream === $currentEpic, 'upstream epic decision no longer valid');
-    $head = (int)query($db, 'SELECT MAX(revision) FROM zt_spectrace_freeze WHERE product=? AND epic=?', [$r->product,$r->epic])->fetchColumn();
+    $head = activeRevision($db, $freeze);
     demand($head === (int)$freeze['revision'], 'cannot review a superseded freeze');
     $submitter = null;
     if ($r->stage === 'spec') {

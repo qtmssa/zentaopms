@@ -13,7 +13,7 @@
 - `import` 由 author 使用。请求包含 `product, epic, expected_revision, graph`。首版预期修订为 0。相同作者以相同基线重试相同图，返回首次冻结回执。其他过期写入报告冲突。
 - `graph` 包含固定 Git 提交 `baseline`、`features`、`sources`、`items` 三个数组。feature 具有 `id`。source 具有 `id, revision, path, blob`。item 具有 `id, revision, summary, sources, actual_consumers`。item.sources 保存版本化定位，包含 `id, revision, path, blob` 及上层检查器支持的行范围、引句等精确定位字段。消费者边具有 `feature_id, obligation_id`。
 - 同一 Epic 内同一来源或需求项身份及版本绑定固定内容。改变义务或关联需升需求项版本。图保留附加业务字段和重复输入，SQL 的关系计数按唯一边统计。悬空定位和未知消费者随请求入库，后续审计可核对缺口。
-- `snapshot` 可由 reader、author、reviewer 使用。输入 `product, epic` 及可选 `revision`，输出 `product,epic,revision,basis,author,graph,statistics,decisions`。省略修订时返回当前头。历史查询中决定行的 `current` 只表明该行在所查询的修订内是否仍有效。活动放行请重新核对当前头和准确审阅目标。
+- `snapshot` 可由 reader、author、reviewer 使用。输入 `product, epic` 及可选 `revision`，输出 `product,epic,revision,basis,author,graph,statistics,decisions`。省略修订时返回当前头。快照包含活动修订 `active_revision`。历史修订中的所有决定都返回 `current=false`，原决定与证据保留。活动放行需核对当前头和准确审阅目标。
 - `basis` 为完整 graph 的 SHA-256。使用 UTF-8、递归键排序、紧凑 JSON，保留 Unicode 和斜线。值支持对象、数组、字符串、整型、布尔、null。
 
 ## 独审决定

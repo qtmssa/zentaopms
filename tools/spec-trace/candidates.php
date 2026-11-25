@@ -8,7 +8,7 @@ function submitCandidate(PDO $db, object $r, array $freeze, string $actor): arra
     $target = digestId($r->target_revision ?? null, 'spec target_revision');
     $epicDecision = positive($r->epic_decision ?? null, 'epic_decision');
     demand((bool)query($db, "SELECT 1 FROM zt_spectrace_member WHERE freeze_id=? AND kind='feature' AND object_id=?", [$freeze['id'],$scope])->fetchColumn(), 'unknown feature scope');
-    $head = (int)query($db, 'SELECT MAX(revision) FROM zt_spectrace_freeze WHERE product=? AND epic=?', [$r->product,$r->epic])->fetchColumn();
+    $head = activeRevision($db, $freeze);
     demand($head === (int)$freeze['revision'], 'cannot submit to a superseded freeze');
     $upstream = query($db, "SELECT id,decision FROM zt_spectrace_decision WHERE freeze_id=? AND stage='epic' ORDER BY id DESC LIMIT 1", [$freeze['id']])->fetch();
     demand($upstream && (int)$upstream['id'] === $epicDecision && $upstream['decision'] === 'accepted', 'upstream epic decision no longer valid');
